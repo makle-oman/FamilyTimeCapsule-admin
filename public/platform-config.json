@@ -1,6 +1,6 @@
 {
-  "Version": "6.2.0",
-  "Title": "PureAdmin",
+  "Version": "1.0.0",
+  "Title": "家的时光",
   "FixedHeader": true,
   "HiddenSideBar": false,
   "MultiTagsCache": false,
@@ -15,12 +15,12 @@
   "HideFooter": false,
   "Stretch": false,
   "SidebarStatus": true,
-  "EpThemeColor": "#409EFF",
+  "EpThemeColor": "#E07A5F",
   "ShowLogo": true,
   "ShowModel": "smart",
   "MenuArrowIconNoTransition": false,
   "CachingAsyncRoutes": false,
   "TooltipEffect": "light",
-  "ResponsiveStorageNameSpace": "responsive-",
+  "ResponsiveStorageNameSpace": "familytime-admin-",
   "MenuSearchHistory": 6
 }

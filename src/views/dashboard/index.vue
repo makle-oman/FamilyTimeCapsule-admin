@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useECharts } from "@pureadmin/utils";
 import type { EChartsOption } from "echarts";
+import { getDashboardStats, getDashboardTrends } from "@/api/admin";
 
 defineOptions({
   name: "Dashboard"
@@ -9,13 +10,13 @@ defineOptions({
 
 // 统计数据
 const stats = ref({
-  totalUsers: 0,
-  totalFamilies: 0,
-  totalMemories: 0,
-  totalPhotos: 0,
-  totalLetters: 0,
-  todayNewUsers: 0,
-  todayNewMemories: 0,
+  userCount: 0,
+  familyCount: 0,
+  memoryCount: 0,
+  photoCount: 0,
+  letterCount: 0,
+  todayUserCount: 0,
+  todayMemoryCount: 0,
   activeUsers: 0
 });
 
@@ -28,87 +29,66 @@ const { setOptions: setTrendOptions, getInstance: getTrendInstance } =
 const { setOptions: setTypeOptions, getInstance: getTypeInstance } =
   useECharts();
 
-// 模拟数据（实际使用时从API获取）
-const mockStats = {
-  totalUsers: 128,
-  totalFamilies: 45,
-  totalMemories: 1256,
-  totalPhotos: 3420,
-  totalLetters: 89,
-  todayNewUsers: 5,
-  todayNewMemories: 23,
-  activeUsers: 67
-};
+// 加载数据
+const loadData = async () => {
+  loading.value = true;
+  try {
+    // 获取统计数据
+    const statsRes = await getDashboardStats();
+    if (statsRes.code === 0 && statsRes.data) {
+      stats.value = statsRes.data;
+    }
 
-// 近7天数据趋势
-const trendData = {
-  dates: ["01-27", "01-28", "01-29", "01-30", "01-31", "02-01", "02-02"],
-  users: [3, 5, 2, 8, 4, 6, 5],
-  memories: [15, 23, 18, 32, 25, 28, 23],
-  photos: [45, 68, 52, 89, 72, 85, 78]
-};
+    // 获取趋势数据
+    const trendRes = await getDashboardTrends();
+    if (trendRes.code === 0 && trendRes.data) {
+      const trendData = trendRes.data;
+      const dates = trendData.map((d: any) => d.date.slice(5));
+      const memories = trendData.map((d: any) => d.memories);
+      const users = trendData.map((d: any) => d.users);
 
-// 内容类型分布
-const typeData = [
-  { name: "文字记录", value: 520 },
-  { name: "照片记录", value: 680 },
-  { name: "语音记录", value: 56 }
-];
-
-onMounted(() => {
-  // 模拟加载
-  setTimeout(() => {
-    stats.value = mockStats;
-    loading.value = false;
-
-    // 设置趋势图
-    setTrendOptions({
-      tooltip: {
-        trigger: "axis",
-        axisPointer: { type: "cross" }
-      },
-      legend: {
-        data: ["新增用户", "新增记忆", "新增照片"],
-        bottom: 0
-      },
-      grid: {
-        left: "3%",
-        right: "4%",
-        bottom: "12%",
-        containLabel: true
-      },
-      xAxis: {
-        type: "category",
-        data: trendData.dates
-      },
-      yAxis: {
-        type: "value"
-      },
-      series: [
-        {
-          name: "新增用户",
-          type: "line",
-          smooth: true,
-          data: trendData.users,
-          itemStyle: { color: "#409EFF" }
+      // 设置趋势图
+      setTrendOptions({
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "cross" }
         },
-        {
-          name: "新增记忆",
-          type: "line",
-          smooth: true,
-          data: trendData.memories,
-          itemStyle: { color: "#67C23A" }
+        legend: {
+          data: ["新增用户", "新增记忆"],
+          bottom: 0
         },
-        {
-          name: "新增照片",
-          type: "bar",
-          data: trendData.photos,
-          itemStyle: { color: "#E6A23C" }
-        }
-      ]
-    } as EChartsOption);
+        grid: {
+          left: "3%",
+          right: "4%",
+          bottom: "12%",
+          containLabel: true
+        },
+        xAxis: {
+          type: "category",
+          data: dates
+        },
+        yAxis: {
+          type: "value"
+        },
+        series: [
+          {
+            name: "新增用户",
+            type: "line",
+            smooth: true,
+            data: users,
+            itemStyle: { color: "#409EFF" }
+          },
+          {
+            name: "新增记忆",
+            type: "bar",
+            data: memories,
+            itemStyle: { color: "#67C23A" }
+          }
+        ]
+      } as EChartsOption);
+    }
 
-    // 设置类型分布图
+    // 设置类型分布图（基于统计数据）
     setTypeOptions({
       tooltip: {
         trigger: "item",
@@ -135,23 +115,42 @@ onMounted(() => {
             show: true,
             formatter: "{b}\n{c}"
           },
-          data: typeData.map((item, index) => ({
-            ...item,
-            itemStyle: {
-              color: ["#E07A5F", "#81B29A", "#F2CC8F"][index]
+          data: [
+            {
+              name: "记忆",
+              value: stats.value.memoryCount,
+              itemStyle: { color: "#E07A5F" }
+            },
+            {
+              name: "照片",
+              value: stats.value.photoCount,
+              itemStyle: { color: "#81B29A" }
+            },
+            {
+              name: "信件",
+              value: stats.value.letterCount,
+              itemStyle: { color: "#F2CC8F" }
             }
-          }))
+          ]
         }
       ]
     } as EChartsOption);
-  }, 500);
+  } catch (error) {
+    console.error("加载数据失败:", error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  loadData();
 });
 
 // 统计卡片配置
 const statCards = computed(() => [
   {
     title: "总用户数",
-    value: stats.value.totalUsers,
+    value: stats.value.userCount,
     icon: "ep:user",
     color: "#409EFF",
     bgColor: "rgba(64, 158, 255, 0.1)",
@@ -159,7 +158,7 @@ const statCards = computed(() => [
   },
   {
     title: "家庭数量",
-    value: stats.value.totalFamilies,
+    value: stats.value.familyCount,
     icon: "ep:house",
     color: "#67C23A",
     bgColor: "rgba(103, 194, 58, 0.1)",
@@ -167,7 +166,7 @@ const statCards = computed(() => [
   },
   {
     title: "记忆总数",
-    value: stats.value.totalMemories,
+    value: stats.value.memoryCount,
     icon: "ep:document",
     color: "#E6A23C",
     bgColor: "rgba(230, 162, 60, 0.1)",
@@ -175,7 +174,7 @@ const statCards = computed(() => [
   },
   {
     title: "照片总数",
-    value: stats.value.totalPhotos,
+    value: stats.value.photoCount,
     icon: "ep:picture",
     color: "#F56C6C",
     bgColor: "rgba(245, 108, 108, 0.1)",
@@ -183,7 +182,7 @@ const statCards = computed(() => [
   },
   {
     title: "信件总数",
-    value: stats.value.totalLetters,
+    value: stats.value.letterCount,
     icon: "ep:message",
     color: "#909399",
     bgColor: "rgba(144, 147, 153, 0.1)",
@@ -191,7 +190,7 @@ const statCards = computed(() => [
   },
   {
     title: "今日新增用户",
-    value: stats.value.todayNewUsers,
+    value: stats.value.todayUserCount,
     icon: "ep:plus",
     color: "#409EFF",
     bgColor: "rgba(64, 158, 255, 0.1)",
@@ -199,14 +198,14 @@ const statCards = computed(() => [
   },
   {
     title: "今日新增记忆",
-    value: stats.value.todayNewMemories,
+    value: stats.value.todayMemoryCount,
     icon: "ep:edit",
     color: "#67C23A",
     bgColor: "rgba(103, 194, 58, 0.1)",
     suffix: "条"
   },
   {
-    title: "活跃用户",
+    title: "活跃用户(7天)",
     value: stats.value.activeUsers,
     icon: "ep:check",
     color: "#E6A23C",
@@ -228,7 +227,7 @@ const statCards = computed(() => [
         :md="6"
         :lg="6"
       >
-        <el-card shadow="hover" class="stat-card" v-loading="loading">
+        <el-card v-loading="loading" shadow="hover" class="stat-card">
           <div class="stat-card-content">
             <div
               class="stat-icon"
@@ -259,7 +258,10 @@ const statCards = computed(() => [
           </template>
           <div
             ref="trendRef"
-            v-use-echart="{ setOptions: setTrendOptions, getInstance: getTrendInstance }"
+            v-use-echart="{
+              setOptions: setTrendOptions,
+              getInstance: getTrendInstance
+            }"
             class="trend-chart"
           />
         </el-card>
@@ -273,7 +275,10 @@ const statCards = computed(() => [
           </template>
           <div
             ref="typeRef"
-            v-use-echart="{ setOptions: setTypeOptions, getInstance: getTypeInstance }"
+            v-use-echart="{
+              setOptions: setTypeOptions,
+              getInstance: getTypeInstance
+            }"
             class="type-chart"
           />
         </el-card>
@@ -301,18 +306,18 @@ const statCards = computed(() => [
 
 .stat-card-content {
   display: flex;
-  align-items: center;
   gap: 16px;
+  align-items: center;
 }
 
 .stat-icon {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 56px;
   height: 56px;
   border-radius: 12px;
-  flex-shrink: 0;
 }
 
 .stat-info {
@@ -321,12 +326,12 @@ const statCards = computed(() => [
 }
 
 .stat-title {
-  font-size: 14px;
-  color: #909399;
   margin-bottom: 8px;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 14px;
+  color: #909399;
+  white-space: nowrap;
 }
 
 .stat-value {
@@ -336,9 +341,9 @@ const statCards = computed(() => [
 }
 
 .stat-suffix {
+  margin-left: 4px;
   font-size: 14px;
   font-weight: normal;
-  margin-left: 4px;
 }
 
 .chart-row {

@@ -1,6 +1,6 @@
 {
-  "name": "pure-admin-thin",
-  "version": "6.2.0",
+  "name": "familytime-admin",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
