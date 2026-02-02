@@ -35,86 +35,153 @@ const loadData = async () => {
   try {
     // 获取统计数据
     const statsRes = await getDashboardStats();
-    if (statsRes.code === 0 && statsRes.data) {
+    if (statsRes.code === 200 && statsRes.data) {
       stats.value = statsRes.data;
     }
 
     // 获取趋势数据
     const trendRes = await getDashboardTrends();
-    if (trendRes.code === 0 && trendRes.data) {
+    if (trendRes.code === 200 && trendRes.data) {
       const trendData = trendRes.data;
       const dates = trendData.map((d: any) => d.date.slice(5));
       const memories = trendData.map((d: any) => d.memories);
       const users = trendData.map((d: any) => d.users);
 
-      // 设置趋势图
+      // 设置趋势图 - 面积图样式
       setTrendOptions({
         tooltip: {
           trigger: "axis",
-          axisPointer: { type: "cross" }
+          axisPointer: {
+            type: "cross",
+            label: { backgroundColor: "#6a7985" }
+          }
         },
         legend: {
           data: ["新增用户", "新增记忆"],
-          bottom: 0
+          top: 10,
+          textStyle: { color: "#606266" }
         },
         grid: {
           left: "3%",
           right: "4%",
-          bottom: "12%",
+          bottom: "3%",
+          top: "60px",
           containLabel: true
         },
         xAxis: {
           type: "category",
-          data: dates
+          boundaryGap: false,
+          data: dates,
+          axisLine: { lineStyle: { color: "#E4E7ED" } },
+          axisLabel: { color: "#909399" }
         },
         yAxis: {
-          type: "value"
+          type: "value",
+          axisLine: { show: false },
+          axisTick: { show: false },
+          splitLine: { lineStyle: { color: "#E4E7ED", type: "dashed" } },
+          axisLabel: { color: "#909399" }
         },
         series: [
           {
             name: "新增用户",
             type: "line",
             smooth: true,
-            data: users,
-            itemStyle: { color: "#409EFF" }
+            symbol: "circle",
+            symbolSize: 8,
+            showSymbol: false,
+            areaStyle: {
+              color: {
+                type: "linear",
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [
+                  { offset: 0, color: "rgba(64, 158, 255, 0.3)" },
+                  { offset: 1, color: "rgba(64, 158, 255, 0.05)" }
+                ]
+              }
+            },
+            lineStyle: { width: 3, color: "#409EFF" },
+            itemStyle: { color: "#409EFF" },
+            data: users
           },
           {
             name: "新增记忆",
-            type: "bar",
-            data: memories,
-            itemStyle: { color: "#67C23A" }
+            type: "line",
+            smooth: true,
+            symbol: "circle",
+            symbolSize: 8,
+            showSymbol: false,
+            areaStyle: {
+              color: {
+                type: "linear",
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [
+                  { offset: 0, color: "rgba(103, 194, 58, 0.3)" },
+                  { offset: 1, color: "rgba(103, 194, 58, 0.05)" }
+                ]
+              }
+            },
+            lineStyle: { width: 3, color: "#67C23A" },
+            itemStyle: { color: "#67C23A" },
+            data: memories
           }
         ]
       } as EChartsOption);
     }
 
-    // 设置类型分布图（基于统计数据）
+    // 设置内容分布图 - 环形图样式
     setTypeOptions({
       tooltip: {
         trigger: "item",
         formatter: "{b}: {c} ({d}%)"
       },
       legend: {
-        orient: "vertical",
-        left: "left",
-        top: "center"
+        orient: "horizontal",
+        bottom: 10,
+        textStyle: { color: "#606266" }
       },
       series: [
         {
           name: "内容类型",
           type: "pie",
-          radius: ["40%", "70%"],
-          center: ["60%", "50%"],
+          radius: ["45%", "70%"],
+          center: ["50%", "45%"],
           avoidLabelOverlap: false,
           itemStyle: {
-            borderRadius: 10,
+            borderRadius: 8,
             borderColor: "#fff",
-            borderWidth: 2
+            borderWidth: 3
           },
           label: {
             show: true,
-            formatter: "{b}\n{c}"
+            position: "center",
+            formatter: () => {
+              const total =
+                stats.value.memoryCount +
+                stats.value.photoCount +
+                stats.value.letterCount;
+              return `{total|${total}}\n{label|总内容}`;
+            },
+            rich: {
+              total: {
+                fontSize: 28,
+                fontWeight: "bold",
+                color: "#303133"
+              },
+              label: {
+                fontSize: 14,
+                color: "#909399",
+                padding: [5, 0, 0, 0]
+              }
+            }
           },
+          labelLine: { show: false },
           data: [
             {
               name: "记忆",
@@ -146,116 +213,117 @@ onMounted(() => {
   loadData();
 });
 
-// 统计卡片配置
-const statCards = computed(() => [
+// 主要统计卡片
+const mainStats = computed(() => [
   {
-    title: "总用户数",
+    title: "用户总数",
     value: stats.value.userCount,
+    subTitle: "总用户",
+    subValue: stats.value.userCount,
     icon: "ep:user",
-    color: "#409EFF",
-    bgColor: "rgba(64, 158, 255, 0.1)",
-    suffix: "人"
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
   },
   {
     title: "家庭数量",
     value: stats.value.familyCount,
+    subTitle: "总家庭",
+    subValue: stats.value.familyCount,
     icon: "ep:house",
-    color: "#67C23A",
-    bgColor: "rgba(103, 194, 58, 0.1)",
-    suffix: "个"
+    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
   },
   {
     title: "记忆总数",
     value: stats.value.memoryCount,
+    subTitle: "总记忆",
+    subValue: stats.value.memoryCount,
     icon: "ep:document",
-    color: "#E6A23C",
-    bgColor: "rgba(230, 162, 60, 0.1)",
-    suffix: "条"
+    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
   },
   {
-    title: "照片总数",
+    title: "照片数量",
     value: stats.value.photoCount,
+    subTitle: "总照片",
+    subValue: stats.value.photoCount,
     icon: "ep:picture",
-    color: "#F56C6C",
-    bgColor: "rgba(245, 108, 108, 0.1)",
-    suffix: "张"
-  },
+    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
+  }
+]);
+
+// 次要统计
+const secondaryStats = computed(() => [
   {
-    title: "信件总数",
-    value: stats.value.letterCount,
-    icon: "ep:message",
-    color: "#909399",
-    bgColor: "rgba(144, 147, 153, 0.1)",
-    suffix: "封"
-  },
-  {
-    title: "今日新增用户",
+    label: "今日新增用户",
     value: stats.value.todayUserCount,
-    icon: "ep:plus",
-    color: "#409EFF",
-    bgColor: "rgba(64, 158, 255, 0.1)",
-    suffix: "人"
+    icon: "ep:user-filled",
+    color: "#409EFF"
   },
   {
-    title: "今日新增记忆",
+    label: "今日新增记忆",
     value: stats.value.todayMemoryCount,
-    icon: "ep:edit",
-    color: "#67C23A",
-    bgColor: "rgba(103, 194, 58, 0.1)",
-    suffix: "条"
+    icon: "ep:edit-pen",
+    color: "#67C23A"
   },
   {
-    title: "活跃用户(7天)",
+    label: "活跃用户(7天)",
     value: stats.value.activeUsers,
     icon: "ep:check",
-    color: "#E6A23C",
-    bgColor: "rgba(230, 162, 60, 0.1)",
-    suffix: "人"
+    color: "#E6A23C"
+  },
+  {
+    label: "信件总数",
+    value: stats.value.letterCount,
+    icon: "ep:message",
+    color: "#F56C6C"
   }
 ]);
 </script>
 
 <template>
   <div class="dashboard-container">
-    <!-- 统计卡片 -->
-    <el-row :gutter="20" class="stat-cards">
+    <!-- 主要统计卡片 -->
+    <el-row :gutter="20" class="main-stats">
       <el-col
-        v-for="(card, index) in statCards"
+        v-for="(item, index) in mainStats"
         :key="index"
         :xs="12"
-        :sm="8"
+        :sm="12"
         :md="6"
         :lg="6"
       >
-        <el-card v-loading="loading" shadow="hover" class="stat-card">
-          <div class="stat-card-content">
-            <div
-              class="stat-icon"
-              :style="{ backgroundColor: card.bgColor, color: card.color }"
-            >
-              <IconifyIconOnline :icon="card.icon" width="28" />
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">{{ card.title }}</div>
-              <div class="stat-value" :style="{ color: card.color }">
-                {{ card.value
-                }}<span class="stat-suffix">{{ card.suffix }}</span>
+        <div
+          v-loading="loading"
+          class="stat-card"
+          :style="{ background: item.gradient }"
+        >
+          <div class="stat-card-inner">
+            <div class="stat-content">
+              <div class="stat-title">{{ item.title }}</div>
+              <div class="stat-value">{{ item.value.toLocaleString() }}</div>
+              <div class="stat-sub">
+                <span>{{ item.subTitle }}</span>
+                <span class="sub-value">{{
+                  item.subValue.toLocaleString()
+                }}</span>
               </div>
             </div>
+            <div class="stat-icon-wrapper">
+              <IconifyIconOnline :icon="item.icon" width="48" />
+            </div>
           </div>
-        </el-card>
+        </div>
       </el-col>
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row :gutter="20" class="chart-row">
+    <el-row :gutter="20" class="chart-section">
       <el-col :xs="24" :sm="24" :md="16" :lg="16">
-        <el-card shadow="hover" class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>数据趋势（近7天）</span>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">
+              <span class="title-text">流量趋势</span>
+              <span class="title-sub">近7天数据</span>
             </div>
-          </template>
+          </div>
           <div
             ref="trendRef"
             v-use-echart="{
@@ -264,15 +332,16 @@ const statCards = computed(() => [
             }"
             class="trend-chart"
           />
-        </el-card>
+        </div>
       </el-col>
       <el-col :xs="24" :sm="24" :md="8" :lg="8">
-        <el-card shadow="hover" class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>内容类型分布</span>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">
+              <span class="title-text">内容分布</span>
+              <span class="title-sub">按类型统计</span>
             </div>
-          </template>
+          </div>
           <div
             ref="typeRef"
             v-use-echart="{
@@ -281,7 +350,31 @@ const statCards = computed(() => [
             }"
             class="type-chart"
           />
-        </el-card>
+        </div>
+      </el-col>
+    </el-row>
+
+    <!-- 次要统计 -->
+    <el-row :gutter="20" class="secondary-stats">
+      <el-col
+        v-for="(item, index) in secondaryStats"
+        :key="index"
+        :xs="12"
+        :sm="12"
+        :md="6"
+        :lg="6"
+      >
+        <div v-loading="loading" class="secondary-card">
+          <div class="secondary-icon" :style="{ color: item.color }">
+            <IconifyIconOnline :icon="item.icon" width="24" />
+          </div>
+          <div class="secondary-info">
+            <div class="secondary-value" :style="{ color: item.color }">
+              {{ item.value }}
+            </div>
+            <div class="secondary-label">{{ item.label }}</div>
+          </div>
+        </div>
       </el-col>
     </el-row>
   </div>
@@ -289,91 +382,168 @@ const statCards = computed(() => [
 
 <style lang="scss" scoped>
 .dashboard-container {
+  min-height: calc(100vh - 120px);
   padding: 20px;
+  background: #f5f7fa;
 }
 
-.stat-cards {
+// 主要统计卡片
+.main-stats {
   margin-bottom: 20px;
 }
 
 .stat-card {
+  padding: 24px;
   margin-bottom: 20px;
+  color: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 15%);
+  transition: all 0.3s ease;
 
-  :deep(.el-card__body) {
-    padding: 20px;
+  &:hover {
+    box-shadow: 0 15px 40px rgb(0 0 0 / 20%);
+    transform: translateY(-5px);
   }
 }
 
-.stat-card-content {
+.stat-card-inner {
   display: flex;
-  gap: 16px;
   align-items: center;
+  justify-content: space-between;
 }
 
-.stat-icon {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-}
-
-.stat-info {
+.stat-content {
   flex: 1;
-  min-width: 0;
 }
 
 .stat-title {
   margin-bottom: 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 14px;
-  color: #909399;
-  white-space: nowrap;
+  opacity: 0.9;
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: 600;
+  margin-bottom: 12px;
+  font-size: 36px;
+  font-weight: 700;
   line-height: 1.2;
 }
 
-.stat-suffix {
-  margin-left: 4px;
-  font-size: 14px;
-  font-weight: normal;
+.stat-sub {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  opacity: 0.8;
+
+  .sub-value {
+    padding: 2px 8px;
+    background: rgb(255 255 255 / 20%);
+    border-radius: 10px;
+  }
 }
 
-.chart-row {
+.stat-icon-wrapper {
+  opacity: 0.3;
+}
+
+// 图表卡片
+.chart-section {
   margin-bottom: 20px;
 }
 
 .chart-card {
+  padding: 24px;
+  margin-bottom: 20px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
+}
+
+.chart-header {
   margin-bottom: 20px;
 }
 
-.card-header {
+.chart-title {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
 
-  span {
-    font-size: 16px;
-    font-weight: 500;
+  .title-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+  }
+
+  .title-sub {
+    font-size: 13px;
+    color: #909399;
   }
 }
 
 .trend-chart {
-  height: 350px;
+  height: 320px;
 }
 
 .type-chart {
-  height: 350px;
+  height: 320px;
 }
 
 [v-use-echart] {
   width: 100%;
+}
+
+// 次要统计卡片
+.secondary-stats {
+  margin-bottom: 20px;
+}
+
+.secondary-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 6%);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+  }
+}
+
+.secondary-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: currentcolor;
+  border-radius: 12px;
+  opacity: 0.15;
+
+  :deep(svg) {
+    position: absolute;
+    opacity: 1;
+  }
+}
+
+.secondary-info {
+  flex: 1;
+}
+
+.secondary-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.secondary-label {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #909399;
 }
 </style>

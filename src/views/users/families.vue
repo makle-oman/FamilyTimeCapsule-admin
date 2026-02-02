@@ -32,7 +32,7 @@ const loadData = async () => {
       limit: pagination.limit,
       keyword: searchForm.keyword || undefined
     });
-    if (res.code === 0 && res.data) {
+    if (res.code === 200 && res.data) {
       tableData.value = res.data.items;
       total.value = res.data.total;
     }

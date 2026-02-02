@@ -1,5 +1,7 @@
 import { http } from "@/utils/http";
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:1314";
+
 export type UserResult = {
   success: boolean;
   data: {
@@ -34,12 +36,31 @@ export type RefreshTokenResult = {
   };
 };
 
+export type CaptchaResult = {
+  code: number;
+  data: {
+    captchaId: string;
+    captchaImg: string;
+  };
+};
+
+/** 获取图形验证码 */
+export const getCaptcha = () => {
+  return http.get<any, CaptchaResult>(`${BASE_URL}/api/admin/captcha`);
+};
+
 /** 登录 */
 export const getLogin = (data?: object) => {
-  return http.request<UserResult>("post", "/login", { data });
+  return http.request<UserResult>("post", `${BASE_URL}/api/admin/login`, {
+    data
+  });
 };
 
 /** 刷新`token` */
 export const refreshTokenApi = (data?: object) => {
-  return http.request<RefreshTokenResult>("post", "/refresh-token", { data });
+  return http.request<RefreshTokenResult>(
+    "post",
+    `${BASE_URL}/api/admin/refresh-token`,
+    { data }
+  );
 };
