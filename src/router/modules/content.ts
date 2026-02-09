@@ -34,6 +34,14 @@ export default {
       meta: {
         title: "信件列表"
       }
+    },
+    {
+      path: "/content/questions",
+      name: "QuestionList",
+      component: () => import("@/views/content/questions.vue"),
+      meta: {
+        title: "每日问答"
+      }
     }
   ]
 } satisfies RouteConfigsTable;

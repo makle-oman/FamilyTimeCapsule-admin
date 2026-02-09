@@ -8,6 +8,12 @@ defineOptions({
   name: "LetterList"
 });
 
+// 格式化时间
+const formatTime = (time: string) => {
+  if (!time) return "-";
+  return dayjs(time).format("YYYY-MM-DD HH:mm");
+};
+
 // 表格数据
 const tableData = ref([]);
 const loading = ref(false);
@@ -161,14 +167,18 @@ onMounted(() => {
         <el-table-column label="开启时间" width="180">
           <template #default="{ row }">
             <div class="unlock-time">
-              <div>{{ row.unlockTime }}</div>
+              <div>{{ formatTime(row.unlockTime) }}</div>
               <div v-if="row.status === 'SEALED'" class="remaining">
                 {{ getDaysRemaining(row.unlockTime) }}
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="180" />
+        <el-table-column label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatTime(row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button

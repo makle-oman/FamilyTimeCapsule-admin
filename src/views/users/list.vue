@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from "vue";
 import { ElMessage } from "element-plus";
+import dayjs from "dayjs";
 import { getUsers } from "@/api/admin";
 
 defineOptions({
   name: "UserList"
 });
+
+// 格式化时间
+const formatTime = (time: string) => {
+  if (!time) return "-";
+  return dayjs(time).format("YYYY-MM-DD HH:mm");
+};
 
 // 表格数据
 const tableData = ref([]);
@@ -107,9 +114,9 @@ onMounted(() => {
     <!-- 表格 -->
     <el-card shadow="never" class="table-card">
       <el-table v-loading="loading" :data="tableData" stripe>
-        <el-table-column type="index" label="#" width="60" />
-        <el-table-column prop="phone" label="手机号" width="120" />
-        <el-table-column prop="nickname" label="昵称" width="120">
+        <el-table-column type="index" label="#" />
+        <el-table-column prop="phone" label="手机号" />
+        <el-table-column prop="nickname" label="昵称">
           <template #default="{ row }">
             <div class="user-info">
               <el-avatar :size="32" :src="row.avatar || ''" class="user-avatar">
@@ -132,7 +139,11 @@ onMounted(() => {
             <span class="text-primary">{{ row.memoriesCount }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="注册时间" width="180" />
+        <el-table-column label="注册时间" width="180">
+          <template #default="{ row }">
+            {{ formatTime(row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button

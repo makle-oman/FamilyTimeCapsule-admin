@@ -54,3 +54,31 @@ export const getLetters = (params: {
 }) => {
   return http.get<any, any>(`${BASE_URL}/api/admin/letters`, { params });
 };
+
+// ========== 问答管理 ==========
+export const getQuestions = (params: {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+}) => {
+  return http.get<any, any>(`${BASE_URL}/api/admin/questions`, { params });
+};
+
+export const createQuestion = (data: { content: string }) => {
+  return http.post<any, any>(`${BASE_URL}/api/admin/questions`, data);
+};
+
+export const updateQuestion = (id: string, data: { content?: string }) => {
+  return http.request<any>("put", `${BASE_URL}/api/admin/questions/${id}`, {
+    data
+  });
+};
+
+export const deleteQuestion = (id: string) => {
+  return http.request<any>("delete", `${BASE_URL}/api/admin/questions/${id}`);
+};
+
+// 获取所有家庭列表（用于下拉选择）
+export const getAllFamilies = () => {
+  return http.get<any, any>(`${BASE_URL}/api/admin/families/all`);
+};

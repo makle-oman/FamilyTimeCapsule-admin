@@ -1,19 +1,72 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { noticesData } from "./data";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import NoticeList from "./components/NoticeList.vue";
 import BellIcon from "~icons/ep/bell";
+import { useNotificationStoreHook } from "@/store/modules/notification";
+import {
+  initSocket,
+  disconnectSocket,
+  type NotificationData
+} from "@/utils/socket";
+import { ElNotification } from "element-plus";
 
-const noticesNum = ref(0);
-const notices = ref(noticesData);
-const activeKey = ref(noticesData[0]?.key);
+const notificationStore = useNotificationStoreHook();
 
-notices.value.map(v => (noticesNum.value += v.list.length));
+const activeKey = ref("1");
+
+// 使用 store 中的通知数据
+const notices = computed(() => notificationStore.noticeTabsData);
+const noticesNum = computed(() => notificationStore.unreadCount);
 
 const getLabel = computed(
-  () => item =>
+  () => (item: any) =>
     item.name + (item.list.length > 0 ? `(${item.list.length})` : "")
 );
+
+// 初始化 Socket 连接
+onMounted(() => {
+  const socket = initSocket();
+
+  socket.on("connect", () => {
+    notificationStore.setConnected(true);
+  });
+
+  socket.on("disconnect", () => {
+    notificationStore.setConnected(false);
+  });
+
+  // 监听新回忆创建事件
+  socket.on("memory:created", (data: NotificationData) => {
+    notificationStore.addNotification(data);
+    // 弹出桌面通知
+    ElNotification({
+      title: "新回忆",
+      message: data.title,
+      type: "success",
+      duration: 3000
+    });
+  });
+
+  // 监听新信件创建事件
+  socket.on("letter:created", (data: NotificationData) => {
+    notificationStore.addNotification(data);
+    ElNotification({
+      title: "新信件",
+      message: data.title,
+      type: "info",
+      duration: 3000
+    });
+  });
+});
+
+onUnmounted(() => {
+  disconnectSocket();
+});
+
+// 清空通知
+const handleClearAll = () => {
+  notificationStore.clearAll();
+};
 </script>
 
 <template>
@@ -53,6 +106,11 @@ const getLabel = computed(
                     <NoticeList :list="item.list" :emptyText="item.emptyText" />
                   </div>
                 </el-scrollbar>
+                <div v-if="item.list.length > 0" class="notice-footer">
+                  <el-button type="primary" link @click="handleClearAll">
+                    清空通知
+                  </el-button>
+                </div>
               </el-tab-pane>
             </template>
           </span>
@@ -92,5 +150,12 @@ const getLabel = computed(
   :deep(.el-tabs__nav-wrap) {
     padding: 0 36px;
   }
+}
+
+.notice-footer {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 </style>

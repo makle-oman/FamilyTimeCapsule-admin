@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from "vue";
 import { ElMessage } from "element-plus";
+import dayjs from "dayjs";
 import { getFamilies } from "@/api/admin";
 
 defineOptions({
   name: "FamilyList"
 });
+
+// 格式化时间
+const formatTime = (time: string) => {
+  if (!time) return "-";
+  return dayjs(time).format("YYYY-MM-DD HH:mm");
+};
 
 // 表格数据
 const tableData = ref([]);
@@ -168,7 +175,11 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="establishedYear" label="建立年份" width="100" />
-        <el-table-column prop="createdAt" label="创建时间" width="180" />
+        <el-table-column label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatTime(row.createdAt) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button

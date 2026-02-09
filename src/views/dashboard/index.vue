@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, nextTick } from "vue";
 import { useECharts } from "@pureadmin/utils";
 import type { EChartsOption } from "echarts";
 import { getDashboardStats, getDashboardTrends } from "@/api/admin";
@@ -23,11 +23,187 @@ const stats = ref({
 // 加载状态
 const loading = ref(true);
 
-// 趋势图配置
-const { setOptions: setTrendOptions, getInstance: getTrendInstance } =
-  useECharts();
-const { setOptions: setTypeOptions, getInstance: getTypeInstance } =
-  useECharts();
+// 图表 DOM 引用
+const trendRef = ref<HTMLDivElement>();
+const typeRef = ref<HTMLDivElement>();
+
+// 趋势图配置 - 传入 ref 元素
+const { setOptions: setTrendOptions } = useECharts(trendRef);
+const { setOptions: setTypeOptions } = useECharts(typeRef);
+
+// 生成最近7天的日期数组
+const getLast7Days = () => {
+  const dates = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    dates.push(
+      `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`
+    );
+  }
+  return dates;
+};
+
+// 初始化趋势图
+const initTrendChart = (
+  dates: string[],
+  users: number[],
+  memories: number[]
+) => {
+  setTrendOptions({
+    tooltip: {
+      trigger: "axis",
+      axisPointer: {
+        type: "cross",
+        label: { backgroundColor: "#6a7985" }
+      }
+    },
+    legend: {
+      data: ["新增用户", "新增记忆"],
+      top: 10,
+      textStyle: { color: "#606266" }
+    },
+    grid: {
+      left: "3%",
+      right: "4%",
+      bottom: "3%",
+      top: "60px",
+      containLabel: true
+    },
+    xAxis: {
+      type: "category",
+      boundaryGap: false,
+      data: dates,
+      axisLine: { lineStyle: { color: "#E4E7ED" } },
+      axisLabel: { color: "#909399" }
+    },
+    yAxis: {
+      type: "value",
+      minInterval: 1,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: "#E4E7ED", type: "dashed" } },
+      axisLabel: { color: "#909399" }
+    },
+    series: [
+      {
+        name: "新增用户",
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 8,
+        showSymbol: false,
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(64, 158, 255, 0.3)" },
+              { offset: 1, color: "rgba(64, 158, 255, 0.05)" }
+            ]
+          }
+        },
+        lineStyle: { width: 3, color: "#409EFF" },
+        itemStyle: { color: "#409EFF" },
+        data: users
+      },
+      {
+        name: "新增记忆",
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 8,
+        showSymbol: false,
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(103, 194, 58, 0.3)" },
+              { offset: 1, color: "rgba(103, 194, 58, 0.05)" }
+            ]
+          }
+        },
+        lineStyle: { width: 3, color: "#67C23A" },
+        itemStyle: { color: "#67C23A" },
+        data: memories
+      }
+    ]
+  } as EChartsOption);
+};
+
+// 初始化内容分布图
+const initTypeChart = () => {
+  const total =
+    stats.value.memoryCount + stats.value.photoCount + stats.value.letterCount;
+
+  setTypeOptions({
+    tooltip: {
+      trigger: "item",
+      formatter: "{b}: {c} ({d}%)"
+    },
+    legend: {
+      orient: "horizontal",
+      bottom: 10,
+      textStyle: { color: "#606266" }
+    },
+    series: [
+      {
+        name: "内容类型",
+        type: "pie",
+        radius: ["45%", "70%"],
+        center: ["50%", "45%"],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 8,
+          borderColor: "#fff",
+          borderWidth: 3
+        },
+        label: {
+          show: true,
+          position: "center",
+          formatter: `{total|${total}}\n{label|总内容}`,
+          rich: {
+            total: {
+              fontSize: 28,
+              fontWeight: "bold",
+              color: "#303133"
+            },
+            label: {
+              fontSize: 14,
+              color: "#909399",
+              padding: [5, 0, 0, 0]
+            }
+          }
+        },
+        labelLine: { show: false },
+        data: [
+          {
+            name: "记忆",
+            value: stats.value.memoryCount || 0,
+            itemStyle: { color: "#E07A5F" }
+          },
+          {
+            name: "照片",
+            value: stats.value.photoCount || 0,
+            itemStyle: { color: "#81B29A" }
+          },
+          {
+            name: "信件",
+            value: stats.value.letterCount || 0,
+            itemStyle: { color: "#F2CC8F" }
+          }
+        ]
+      }
+    ]
+  } as EChartsOption);
+};
 
 // 加载数据
 const loadData = async () => {
@@ -40,170 +216,34 @@ const loadData = async () => {
     }
 
     // 获取趋势数据
-    const trendRes = await getDashboardTrends();
-    if (trendRes.code === 200 && trendRes.data) {
-      const trendData = trendRes.data;
-      const dates = trendData.map((d: any) => d.date.slice(5));
-      const memories = trendData.map((d: any) => d.memories);
-      const users = trendData.map((d: any) => d.users);
+    let dates = getLast7Days();
+    let users = [0, 0, 0, 0, 0, 0, 0];
+    let memories = [0, 0, 0, 0, 0, 0, 0];
 
-      // 设置趋势图 - 面积图样式
-      setTrendOptions({
-        tooltip: {
-          trigger: "axis",
-          axisPointer: {
-            type: "cross",
-            label: { backgroundColor: "#6a7985" }
-          }
-        },
-        legend: {
-          data: ["新增用户", "新增记忆"],
-          top: 10,
-          textStyle: { color: "#606266" }
-        },
-        grid: {
-          left: "3%",
-          right: "4%",
-          bottom: "3%",
-          top: "60px",
-          containLabel: true
-        },
-        xAxis: {
-          type: "category",
-          boundaryGap: false,
-          data: dates,
-          axisLine: { lineStyle: { color: "#E4E7ED" } },
-          axisLabel: { color: "#909399" }
-        },
-        yAxis: {
-          type: "value",
-          axisLine: { show: false },
-          axisTick: { show: false },
-          splitLine: { lineStyle: { color: "#E4E7ED", type: "dashed" } },
-          axisLabel: { color: "#909399" }
-        },
-        series: [
-          {
-            name: "新增用户",
-            type: "line",
-            smooth: true,
-            symbol: "circle",
-            symbolSize: 8,
-            showSymbol: false,
-            areaStyle: {
-              color: {
-                type: "linear",
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: "rgba(64, 158, 255, 0.3)" },
-                  { offset: 1, color: "rgba(64, 158, 255, 0.05)" }
-                ]
-              }
-            },
-            lineStyle: { width: 3, color: "#409EFF" },
-            itemStyle: { color: "#409EFF" },
-            data: users
-          },
-          {
-            name: "新增记忆",
-            type: "line",
-            smooth: true,
-            symbol: "circle",
-            symbolSize: 8,
-            showSymbol: false,
-            areaStyle: {
-              color: {
-                type: "linear",
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: "rgba(103, 194, 58, 0.3)" },
-                  { offset: 1, color: "rgba(103, 194, 58, 0.05)" }
-                ]
-              }
-            },
-            lineStyle: { width: 3, color: "#67C23A" },
-            itemStyle: { color: "#67C23A" },
-            data: memories
-          }
-        ]
-      } as EChartsOption);
+    const trendRes = await getDashboardTrends();
+    if (trendRes.code === 200 && trendRes.data && trendRes.data.length > 0) {
+      const trendData = trendRes.data;
+      dates = trendData.map((d: any) => d.date.slice(5));
+      memories = trendData.map((d: any) => d.memories || 0);
+      users = trendData.map((d: any) => d.users || 0);
     }
 
-    // 设置内容分布图 - 环形图样式
-    setTypeOptions({
-      tooltip: {
-        trigger: "item",
-        formatter: "{b}: {c} ({d}%)"
-      },
-      legend: {
-        orient: "horizontal",
-        bottom: 10,
-        textStyle: { color: "#606266" }
-      },
-      series: [
-        {
-          name: "内容类型",
-          type: "pie",
-          radius: ["45%", "70%"],
-          center: ["50%", "45%"],
-          avoidLabelOverlap: false,
-          itemStyle: {
-            borderRadius: 8,
-            borderColor: "#fff",
-            borderWidth: 3
-          },
-          label: {
-            show: true,
-            position: "center",
-            formatter: () => {
-              const total =
-                stats.value.memoryCount +
-                stats.value.photoCount +
-                stats.value.letterCount;
-              return `{total|${total}}\n{label|总内容}`;
-            },
-            rich: {
-              total: {
-                fontSize: 28,
-                fontWeight: "bold",
-                color: "#303133"
-              },
-              label: {
-                fontSize: 14,
-                color: "#909399",
-                padding: [5, 0, 0, 0]
-              }
-            }
-          },
-          labelLine: { show: false },
-          data: [
-            {
-              name: "记忆",
-              value: stats.value.memoryCount,
-              itemStyle: { color: "#E07A5F" }
-            },
-            {
-              name: "照片",
-              value: stats.value.photoCount,
-              itemStyle: { color: "#81B29A" }
-            },
-            {
-              name: "信件",
-              value: stats.value.letterCount,
-              itemStyle: { color: "#F2CC8F" }
-            }
-          ]
-        }
-      ]
-    } as EChartsOption);
+    // 等待 DOM 更新后初始化图表
+    await nextTick();
+
+    // 初始化图表
+    initTrendChart(dates, users, memories);
+    initTypeChart();
   } catch (error) {
     console.error("加载数据失败:", error);
+    // 即使失败也显示默认图表
+    await nextTick();
+    initTrendChart(
+      getLast7Days(),
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0]
+    );
+    initTypeChart();
   } finally {
     loading.value = false;
   }
@@ -324,14 +364,7 @@ const secondaryStats = computed(() => [
               <span class="title-sub">近7天数据</span>
             </div>
           </div>
-          <div
-            ref="trendRef"
-            v-use-echart="{
-              setOptions: setTrendOptions,
-              getInstance: getTrendInstance
-            }"
-            class="trend-chart"
-          />
+          <div ref="trendRef" class="trend-chart" />
         </div>
       </el-col>
       <el-col :xs="24" :sm="24" :md="8" :lg="8">
@@ -342,14 +375,7 @@ const secondaryStats = computed(() => [
               <span class="title-sub">按类型统计</span>
             </div>
           </div>
-          <div
-            ref="typeRef"
-            v-use-echart="{
-              setOptions: setTypeOptions,
-              getInstance: getTypeInstance
-            }"
-            class="type-chart"
-          />
+          <div ref="typeRef" class="type-chart" />
         </div>
       </el-col>
     </el-row>
@@ -482,15 +508,13 @@ const secondaryStats = computed(() => [
 }
 
 .trend-chart {
+  width: 100%;
   height: 320px;
 }
 
 .type-chart {
-  height: 320px;
-}
-
-[v-use-echart] {
   width: 100%;
+  height: 320px;
 }
 
 // 次要统计卡片
